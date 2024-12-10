@@ -1,11 +1,34 @@
 import os
+import sys
 import logging  # ログ記録用のモジュール
 import configparser  # 設定ファイル読み込み用のモジュール
 import tkinter as tk  # GUIを作成するための標準ライブラリ
 from tkinter import filedialog, messagebox  # ファイル選択ダイアログとメッセージボックス用
 from tkinter import ttk  # モダンなGUIウィジェット用
-from tkinterdnd2 import DND_FILES, TkinterDnD  # ドラッグ＆ドロップ機能を提供
 import traceback
+
+def setup_tkdnd():
+    """tkdndライブラリのセットアップ"""
+    # 実行ファイルのディレクトリを取得
+    if getattr(sys, 'frozen', False):
+        # PyInstallerで作成された実行ファイルの場合
+        base_path = sys._MEIPASS
+    else:
+        # 通常のPython実行の場合
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    # tkdndのパスを環境変数に追加
+    tkdnd_path = os.path.join(base_path, 'tkinterdnd2', 'tkdnd')
+    if os.path.exists(tkdnd_path):
+        os.environ['TKDND_LIBRARY'] = tkdnd_path
+
+    # tkinterdnd2をインポート
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    return DND_FILES, TkinterDnD
+
+# tkdndのセットアップ
+DND_FILES, TkinterDnD = setup_tkdnd()
+
 from merger import merge_files, setup_logging  # 自作のマージ機能モジュール
 
 class FileListItem(ttk.Frame):
