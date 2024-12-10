@@ -2,6 +2,25 @@ import os
 import logging
 from pathlib import Path  # パス操作を簡単にするためのモジュール
 
+# 無視するディレクトリのリスト
+IGNORED_DIRS = {
+    'venv',          # Python仮想環境
+    '.git',          # Gitリポジトリ
+    '.pytest_cache',  # Pytestのキャッシュ
+    '__pycache__',   # Pythonのキャッシュ
+    '.vscode',       # VSCodeの設定
+    '.idea',         # PyCharmの設定
+    'node_modules',  # Node.jsの依存関係
+    '.env',          # 環境変数
+    'build',         # ビルド成果物
+    'dist',          # 配布用ファイル
+    'coverage',      # カバレッジレポート
+    '.coverage',     # カバレッジデータ
+    '.mypy_cache',   # Mypyのキャッシュ
+    '.tox',          # Toxの仮想環境
+    'htmlcov',       # HTMLカバレッジレポート
+}
+
 def setup_logging():
     """
     ログ設定を初期化する関数
@@ -37,6 +56,10 @@ def generate_dir_structure(project_dir: str, max_depth: int = 3) -> str:
     project_path = Path(project_dir)
     lines = []  # ツリー構造の各行を格納するリスト
 
+    def should_ignore(path: Path) -> bool:
+        """指定されたパスが無視すべきディレクトリかどうかを判定"""
+        return path.name in IGNORED_DIRS
+
     def recurse(path: Path, prefix: str = '', depth: int = 0):
         """
         ディレクトリを再帰的に探索してツリー構造を生成する内部関数
@@ -51,7 +74,16 @@ def generate_dir_structure(project_dir: str, max_depth: int = 3) -> str:
             return
         
         # ディレクトリ内のファイルとフォルダを取得（ソート済み）
-        entries = sorted(list(path.iterdir()), key=lambda p: (p.is_file(), p.name))
+        entries = []
+        try:
+            for entry in sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name)):
+                # 無視すべきディレクトリはスキップ
+                if entry.is_dir() and should_ignore(entry):
+                    continue
+                entries.append(entry)
+        except PermissionError:
+            # アクセス権限がない場合はスキップ
+            return
         
         # 各エントリ（ファイルやフォルダ）を処理
         for i, e in enumerate(entries):
@@ -73,7 +105,7 @@ def generate_dir_structure(project_dir: str, max_depth: int = 3) -> str:
     # 生成した行を改行で結合して返す
     return '\n'.join(lines)
 
-def merge_files(project_dir: str, relative_paths: list, output_md: str, error_message: str = None, max_depth: int = 3) -> None:
+def merge_files(project_dir: str, relative_paths: list, output_md: str, error_message: str = None, error_log1: str = None, error_log2: str = None, max_depth: int = 3) -> None:
     """
     指定されたファイルの内容をマークダウンファイルにマージする関数
     
@@ -82,6 +114,8 @@ def merge_files(project_dir: str, relative_paths: list, output_md: str, error_me
         relative_paths (list): マージするファイルの相対パスのリスト
         output_md (str): 出力するマークダウンファイルの名前
         error_message (str): エラーメッセージ（オプション）
+        error_log1 (str): エラーログ1（オプション）
+        error_log2 (str): エラーログ2（オプション）
         max_depth (int): ディレクトリ構造の表示深さ（デフォルト: 3）
     
     Raises:
@@ -113,6 +147,18 @@ def merge_files(project_dir: str, relative_paths: list, output_md: str, error_me
             md.write(error_message)
             md.write("\n```\n\n")
 
+        # エラーログ1を書き込む
+        if error_log1:
+            md.write("* 'Error Log 1'\n```\n")
+            md.write(error_log1)
+            md.write("\n```\n\n")
+
+        # エラーログ2を書き込む
+        if error_log2:
+            md.write("* 'Error Log 2'\n```\n")
+            md.write(error_log2)
+            md.write("\n```\n\n")
+
         # ファイルの内容を書き込み
         for rp in relative_paths:
             full_path = os.path.join(project_dir, rp)
@@ -129,7 +175,7 @@ def merge_files(project_dir: str, relative_paths: list, output_md: str, error_me
                 lang = "css"
             elif ext == '.json':
                 lang = "json"
-            # その他の拡張子は言語未指定
+            # その他の拡張子は言語指定なし
 
             # ファイル名とコードブロックを書き込み
             md.write(f"* '{rp}'\n")

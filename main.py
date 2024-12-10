@@ -10,9 +10,16 @@ from merger import merge_files, setup_logging  # 自作のマージ機能モジ�
 
 class FileListItem(ttk.Frame):
     """ファイルリストの各項目を表すクラス"""
-    def __init__(self, parent, filepath, on_delete):
+    def __init__(self, parent, filepath, on_delete, is_odd=False):
         super().__init__(parent)
         self.filepath = filepath
+        
+        # 背景色を交互に変更
+        if is_odd:
+            self.configure(style='Odd.TFrame')
+        else:
+            self.configure(style='Even.TFrame')
+        
         # ファイルパスを表示するラベル
         self.label = ttk.Label(self, text=filepath)
         self.label.pack(side='left', padx=(0, 5), fill='x', expand=True)
@@ -22,7 +29,7 @@ class FileListItem(ttk.Frame):
 
 class ScrollableFileList(ttk.Frame):
     """スクロール可能なファイルリストを表すクラス"""
-    def __init__(self, parent):
+    def __init__(self, parent, on_double_click):
         super().__init__(parent)
         # スクロールバーの作成
         self.scrollbar = ttk.Scrollbar(self)
@@ -48,6 +55,10 @@ class ScrollableFileList(ttk.Frame):
         
         # マウスホイールでのスクロール
         self.canvas.bind_all('<MouseWheel>', self._on_mousewheel)
+        
+        # ダブルクリックイベント
+        self.canvas.bind('<Double-Button-1>', lambda e: on_double_click())
+        self.file_frame.bind('<Double-Button-1>', lambda e: on_double_click())
 
     def _on_frame_configure(self, event=None):
         """内部フレームのサイズが変更されたときにスクロール範囲を更新"""
@@ -63,7 +74,8 @@ class ScrollableFileList(ttk.Frame):
 
     def add_file(self, filepath):
         """ファイルをリストに追加"""
-        item = FileListItem(self.file_frame, filepath, self.remove_file)
+        is_odd = len(self.file_items) % 2 == 1
+        item = FileListItem(self.file_frame, filepath, self.remove_file, is_odd)
         item.pack(fill='x', padx=5, pady=2)
         self.file_items.append(item)
 
@@ -72,6 +84,12 @@ class ScrollableFileList(ttk.Frame):
         item.pack_forget()
         item.destroy()
         self.file_items.remove(item)
+        # 背景色を再設定
+        for i, item in enumerate(self.file_items):
+            if i % 2 == 1:
+                item.configure(style='Odd.TFrame')
+            else:
+                item.configure(style='Even.TFrame')
 
     def get_files(self):
         """現在のファイルパスのリストを取得"""
@@ -103,6 +121,11 @@ def main():
     root = TkinterDnD.Tk()  # ドラッグ＆ドロップ対応のTkインターフェース
     root.title("Flask Debug File Merger")  # ウィンドウのタイトル
     root.geometry("800x600")  # ウィンドウサイズ（幅x高さ）
+
+    # スタイルの設定
+    style = ttk.Style()
+    style.configure('Odd.TFrame', background='#f0f0f0')
+    style.configure('Even.TFrame', background='white')
 
     # ==========================================================
     # プロジェクトディレクトリ選択部分の作成
@@ -157,7 +180,7 @@ def main():
 
     # ドラッグ＆ドロップ領域の作成
     ttk.Label(frame_files, text="Drop files here or double-click to add:").pack(anchor='w', padx=5)
-    file_list = ScrollableFileList(frame_files)
+    file_list = ScrollableFileList(frame_files, add_files)  # ダブルクリックでadd_files関数を呼び出す
     file_list.pack(fill='both', expand=True, padx=5)
 
     # エラーメッセージ用タブの作成
@@ -168,6 +191,24 @@ def main():
     ttk.Label(frame_error, text="Paste error message here:").pack(anchor='w', padx=5)
     error_text = tk.Text(frame_error, wrap=tk.WORD, height=20)  # テキスト入力欄
     error_text.pack(fill='both', expand=True, padx=5)
+
+    # エラーログ1用タブの作成
+    frame_error_log1 = ttk.Frame(notebook)
+    notebook.add(frame_error_log1, text='Error Log 1')
+
+    # エラーログ1入力領域の作成
+    ttk.Label(frame_error_log1, text="Paste error log 1 here:").pack(anchor='w', padx=5)
+    error_log1_text = tk.Text(frame_error_log1, wrap=tk.WORD, height=20)
+    error_log1_text.pack(fill='both', expand=True, padx=5)
+
+    # エラーログ2用タブの作成
+    frame_error_log2 = ttk.Frame(notebook)
+    notebook.add(frame_error_log2, text='Error Log 2')
+
+    # エラーログ2入力領域の作成
+    ttk.Label(frame_error_log2, text="Paste error log 2 here:").pack(anchor='w', padx=5)
+    error_log2_text = tk.Text(frame_error_log2, wrap=tk.WORD, height=20)
+    error_log2_text.pack(fill='both', expand=True, padx=5)
 
     # ==========================================================
     # ドラッグ＆ドロップの処理関数
@@ -221,15 +262,25 @@ def main():
             # ファイルリストとエラーテキストの取得
             relative_paths = file_list.get_files()
             error_message = error_text.get('1.0', tk.END).strip()
+            error_log1 = error_log1_text.get('1.0', tk.END).strip()
+            error_log2 = error_log2_text.get('1.0', tk.END).strip()
 
             # マージ対象が存在するか確認
-            if not relative_paths and not error_message:
-                messagebox.showerror("Error", "No files or error text to merge.")
+            if not relative_paths and not error_message and not error_log1 and not error_log2:
+                messagebox.showerror("Error", "No files or error messages to merge.")
                 return
 
             # マージ処理の実行
             output_md = default_output
-            merge_files(project_dir, relative_paths, output_md, error_message=error_message, max_depth=max_depth)
+            merge_files(
+                project_dir,
+                relative_paths,
+                output_md,
+                error_message=error_message,
+                error_log1=error_log1,
+                error_log2=error_log2,
+                max_depth=max_depth
+            )
             messagebox.showinfo("Success", f"Merged into {os.path.join(project_dir, output_md)}")
             logging.info("Merge completed successfully.")
 
@@ -243,6 +294,8 @@ def main():
         project_dir_var.set("")  # プロジェクトディレクトリをクリア
         file_list.clear()  # ファイルリストをクリア
         error_text.delete('1.0', tk.END)  # エラーテキストをクリア
+        error_log1_text.delete('1.0', tk.END)  # エラーログ1をクリア
+        error_log2_text.delete('1.0', tk.END)  # エラーログ2をクリア
 
     # マージボタンとリセットボタンの配置
     ttk.Button(frame_buttons, text="Merge", command=do_merge).pack(side='left', padx=5)
