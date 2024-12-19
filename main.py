@@ -29,7 +29,7 @@ def setup_tkdnd():
 # tkdndのセットアップ
 DND_FILES, TkinterDnD = setup_tkdnd()
 
-from merger import merge_files, setup_logging  # 自作のマージ機能モジュール
+from merger import merge_files  # 自作のマージ機能モジュール
 
 class FileListItem(ttk.Frame):
     """ファイルリストの各項目を表すクラス"""
@@ -125,7 +125,7 @@ class ScrollableFileList(ttk.Frame):
 
 def main():
     # ロギングの設定（エラーや重要な情報を記録するため）
-    setup_logging()
+    # setup_logging() # この行を削除
 
     # ==========================================================
     # 設定ファイル（config.ini）の読み込み
@@ -157,7 +157,7 @@ def main():
     frame_dir.pack(fill='x', pady=5, padx=5)  # フレームの配置（x方向に伸縮可能）
     
     # ラベルとテキスト入力欄の配置
-    ttk.Label(frame_dir, text="Project Directory:").pack(side='left')
+    ttk.Label(frame_dir, text="プロジェクトディレクトリ:").pack(side='left')
     project_dir_var = tk.StringVar()  # ディレクトリパスを保持する変数
     entry_dir = ttk.Entry(frame_dir, textvariable=project_dir_var, width=50)
     entry_dir.pack(side='left', padx=5)
@@ -169,7 +169,7 @@ def main():
             project_dir_var.set(d)  # 選択されたパスを入力欄にセット
     
     # 「Browse...」ボタンの配置
-    ttk.Button(frame_dir, text="Browse...", command=browse_dir).pack(side='left')
+    ttk.Button(frame_dir, text="開く", command=browse_dir).pack(side='left')
 
     # ==========================================================
     # タブインターフェースの作成
@@ -186,7 +186,7 @@ def main():
         """ファイル選択ダイアログを表示してファイルを追加"""
         project_dir = project_dir_var.get()
         if not project_dir:
-            messagebox.showerror("Error", "Please set the Project Directory first.")
+            messagebox.showerror("Error", "先にプロジェクトの場所を選んでください")
             return
         
         files = filedialog.askopenfilenames()
@@ -198,38 +198,38 @@ def main():
                 except ValueError:
                     file_list.add_file(f)
 
-    add_button = ttk.Button(frame_files, text="Add Files...", command=add_files)
+    add_button = ttk.Button(frame_files, text="ファイルを追加", command=add_files)
     add_button.pack(anchor='w', padx=5, pady=5)
 
     # ドラッグ＆ドロップ領域の作成
-    ttk.Label(frame_files, text="Drop files here or double-click to add:").pack(anchor='w', padx=5)
+    ttk.Label(frame_files, text="ここにファイルをドロップするか、ダブルクリックしてダイアログを開いてください").pack(anchor='w', padx=5)
     file_list = ScrollableFileList(frame_files, add_files)  # ダブルクリックでadd_files関数を呼び出す
     file_list.pack(fill='both', expand=True, padx=5)
 
     # エラーメッセージ用タブの作成
     frame_error = ttk.Frame(notebook)
-    notebook.add(frame_error, text='Error Message')  # タブに「Error Message」ページを追加
+    notebook.add(frame_error, text='エラーメッセージ')  # タブに「Error Message」ページを追加
 
     # エラーメッセージ入力領域の作成
-    ttk.Label(frame_error, text="Paste error message here:").pack(anchor='w', padx=5)
+    ttk.Label(frame_error, text="報告要望やエラーメッセージ").pack(anchor='w', padx=5)
     error_text = tk.Text(frame_error, wrap=tk.WORD, height=20)  # テキスト入力欄
     error_text.pack(fill='both', expand=True, padx=5)
 
     # エラーログ1用タブの作成
     frame_error_log1 = ttk.Frame(notebook)
-    notebook.add(frame_error_log1, text='Error Log 1')
+    notebook.add(frame_error_log1, text='ログ 1')
 
     # エラーログ1入力領域の作成
-    ttk.Label(frame_error_log1, text="Paste error log 1 here:").pack(anchor='w', padx=5)
+    ttk.Label(frame_error_log1, text="エラーログをここに貼り付けてください").pack(anchor='w', padx=5)
     error_log1_text = tk.Text(frame_error_log1, wrap=tk.WORD, height=20)
     error_log1_text.pack(fill='both', expand=True, padx=5)
 
     # エラーログ2用タブの作成
     frame_error_log2 = ttk.Frame(notebook)
-    notebook.add(frame_error_log2, text='Error Log 2')
+    notebook.add(frame_error_log2, text='ログ 2')
 
     # エラーログ2入力領域の作成
-    ttk.Label(frame_error_log2, text="Paste error log 2 here:").pack(anchor='w', padx=5)
+    ttk.Label(frame_error_log2, text="エラーログをここに貼り付けてください").pack(anchor='w', padx=5)
     error_log2_text = tk.Text(frame_error_log2, wrap=tk.WORD, height=20)
     error_log2_text.pack(fill='both', expand=True, padx=5)
 
@@ -249,7 +249,7 @@ def main():
         
         # プロジェクトディレクトリが設定されているか確認
         if not project_dir:
-            messagebox.showerror("Error", "Please set the Project Directory first.")
+            messagebox.showerror("Error", "先にプロジェクトディレクトリを選択")
             return
         
         # 各ファイルをリストに追加
@@ -279,7 +279,7 @@ def main():
             # プロジェクトディレクトリの確認
             project_dir = project_dir_var.get().strip()
             if not project_dir:
-                messagebox.showerror("Error", "Project directory is not set.")
+                messagebox.showerror("Error", "プロジェクトディレクトリがセットされていません")
                 return
 
             # ファイルリストとエラーテキストの取得
@@ -290,7 +290,7 @@ def main():
 
             # マージ対象が存在するか確認
             if not relative_paths and not error_message and not error_log1 and not error_log2:
-                messagebox.showerror("Error", "No files or error messages to merge.")
+                messagebox.showerror("Error", "ファイルやメッセージがありません")
                 return
 
             # マージ処理の実行
@@ -304,12 +304,12 @@ def main():
                 error_log2=error_log2,
                 max_depth=max_depth
             )
-            messagebox.showinfo("Success", f"Merged into {os.path.join(project_dir, output_md)}")
-            logging.info("Merge completed successfully.")
+            messagebox.showinfo("成功", f"Merged into {os.path.join(project_dir, output_md)}")
+            logging.info("ファイルはプロジェクトディレクトリに保存されました")
 
         except Exception as e:
             # エラーが発生した場合はログに記録してユーザーに通知
-            logging.error("Merge failed", exc_info=True)
+            logging.error("マージ失敗", exc_info=True)
             messagebox.showerror("Error", f"Merge failed: {e}")
 
     def do_reset():
