@@ -37,7 +37,7 @@ ENV/
 *~
 
 # Project specific
-error.log
+*.log
 merged_result*.md
 *.spec
 
