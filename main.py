@@ -7,6 +7,19 @@ from tkinter import filedialog, messagebox  # ファイル選択ダイアログ�
 from tkinter import ttk  # モダンなGUIウィジェット用
 import traceback
 
+# 基本カラースキーム
+COLORS = {
+    'main': '#E6F3FF',      # メインカラー（薄い青）
+    'accent': '#4B89DC',    # アクセントカラー（中間の青）
+    'emphasis': '#2C3E50',  # 強調カラー（濃い青）
+    'warning': '#E74C3C',   # 警告カラー（赤）
+    'success': '#27AE60',   # 成功カラー（緑）
+    'hover_accent': '#357ABD',  # ホバー時のアクセントカラー
+    'hover_warning': '#D62C1A',  # ホバー時の警告カラー
+    'bg_light': '#F5F8FA',  # より薄い青（偶数行背景）
+    'text_light': '#F8F9FA' # テキストエリア背景
+}
+
 def setup_tkdnd():
     """tkdndライブラリのセットアップ"""
     # 実行ファイルのディレクトリを取得
@@ -47,7 +60,7 @@ class FileListItem(ttk.Frame):
         self.label = ttk.Label(self, text=filepath)
         self.label.pack(side='left', padx=(0, 5), fill='x', expand=True)
         # 削除ボタン
-        self.delete_btn = ttk.Button(self, text="×", width=3, command=lambda: on_delete(self))
+        self.delete_btn = ttk.Button(self, text="×", width=3, command=lambda: on_delete(self), style='Warning.TButton')
         self.delete_btn.pack(side='right')
 
 class ScrollableFileList(ttk.Frame):
@@ -59,14 +72,14 @@ class ScrollableFileList(ttk.Frame):
         self.scrollbar.pack(side='right', fill='y')
         
         # キャンバスの作成
-        self.canvas = tk.Canvas(self, yscrollcommand=self.scrollbar.set)
+        self.canvas = tk.Canvas(self, yscrollcommand=self.scrollbar.set, bg=COLORS['main'])
         self.canvas.pack(side='left', fill='both', expand=True)
         
         # スクロールバーとキャンバスの連動
         self.scrollbar.config(command=self.canvas.yview)
         
         # ファイルリストを配置するフレーム
-        self.file_frame = ttk.Frame(self.canvas)
+        self.file_frame = ttk.Frame(self.canvas, style='Odd.TFrame')
         self.canvas_frame = self.canvas.create_window((0, 0), window=self.file_frame, anchor='nw')
         
         # ファイルパスのリスト
@@ -123,24 +136,64 @@ class ScrollableFileList(ttk.Frame):
         for item in self.file_items[:]:
             self.remove_file(item)
 
+def setup_logging():
+    """ロギングの設定"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        handlers=[
+            logging.StreamHandler(),  # 標準出力へのハンドラ
+            logging.FileHandler('debug_merger.log', encoding='utf-8')  # ファイルへのハンドラ
+        ]
+    )
+
 def main():
     # ロギングの設定（エラーや重要な情報を記録するため）
-    # setup_logging() # この行を削除
+    setup_logging()
 
     # ==========================================================
     # 設定ファイル（config.ini）の読み込み
     # ==========================================================
-    config = configparser.ConfigParser()
-    if os.path.isfile('config.ini'):
-        # UTF-8エンコーディングを指定して設定ファイルを読み込み
-        config.read('config.ini', encoding='utf-8')
-    # デフォルト値の設定（設定ファイルが無い場合や設定が見つからない場合に使用）
-    default_output = config['DEFAULT'].get('output_filename', 'merged_result.md')
-    max_depth = config['DEFAULT'].getint('max_depth', 3)
-    
-    # 除外設定の読み込み
-    skip_dirs = [d.strip() for d in config['DEFAULT'].get('skip_dirs', '').split(',') if d.strip()]
-    skip_extensions = [e.strip() for e in config['DEFAULT'].get('skip_extensions', '').split(',') if e.strip()]
+    # 設定のデフォルト値
+    DEFAULT_CONFIG = {
+        'output_filename': 'merged_result.md',
+        'max_depth': '3',
+        'skip_dirs': '.git,build,dist,__pycache__,node_modules,venv,.venv,.idea,.vscode',
+        'skip_extensions': '.pyc,.pyo,.pyd,.so,.dll,.dylib,.exe,.obj,.o'
+    }
+
+    config = configparser.ConfigParser(defaults=DEFAULT_CONFIG)
+    try:
+        if os.path.isfile('config.ini'):
+            # UTF-8エンコーディングを指定して設定ファイルを読み込み
+            config.read('config.ini', encoding='utf-8')
+        
+        # 設定値の取得（エラーハンドリング付き）
+        try:
+            default_output = config.get('DEFAULT', 'output_filename', fallback=DEFAULT_CONFIG['output_filename'])
+            max_depth = config.getint('DEFAULT', 'max_depth', fallback=int(DEFAULT_CONFIG['max_depth']))
+        except (configparser.Error, ValueError) as e:
+            logging.warning(f"設定値の読み込みエラー: {e}")
+            default_output = DEFAULT_CONFIG['output_filename']
+            max_depth = int(DEFAULT_CONFIG['max_depth'])
+        
+        # 除外設定の読み込み
+        try:
+            skip_dirs = [d.strip() for d in config.get('DEFAULT', 'skip_dirs', 
+                        fallback=DEFAULT_CONFIG['skip_dirs']).split(',') if d.strip()]
+            skip_extensions = [e.strip() for e in config.get('DEFAULT', 'skip_extensions', 
+                            fallback=DEFAULT_CONFIG['skip_extensions']).split(',') if e.strip()]
+        except configparser.Error as e:
+            logging.warning(f"除外設定の読み込みエラー: {e}")
+            skip_dirs = [d.strip() for d in DEFAULT_CONFIG['skip_dirs'].split(',') if d.strip()]
+            skip_extensions = [e.strip() for e in DEFAULT_CONFIG['skip_extensions'].split(',') if e.strip()]
+    except Exception as e:
+        logging.error(f"設定ファイルの読み込みに失敗しました: {e}")
+        # デフォルト値を使用
+        default_output = DEFAULT_CONFIG['output_filename']
+        max_depth = int(DEFAULT_CONFIG['max_depth'])
+        skip_dirs = [d.strip() for d in DEFAULT_CONFIG['skip_dirs'].split(',') if d.strip()]
+        skip_extensions = [e.strip() for e in DEFAULT_CONFIG['skip_extensions'].split(',') if e.strip()]
 
     # ==========================================================
     # メインウィンドウの設定
@@ -151,13 +204,32 @@ def main():
 
     # スタイルの設定
     style = ttk.Style()
-    style.configure('Odd.TFrame', background='#f0f0f0')
-    style.configure('Even.TFrame', background='white')
+    
+    # フレームスタイル
+    style.configure('Odd.TFrame', background=COLORS['main'])
+    style.configure('Even.TFrame', background=COLORS['bg_light'])
+    
+    # ボタンスタイル
+    style.configure('Accent.TButton', background=COLORS['accent'], foreground='white')
+    style.configure('Warning.TButton', background=COLORS['warning'], foreground='white')
+    style.map('Accent.TButton', background=[('active', COLORS['hover_accent'])])
+    style.map('Warning.TButton', background=[('active', COLORS['hover_warning'])])
+    
+    # タブスタイル
+    style.configure('TNotebook', background=COLORS['main'])
+    style.configure('TNotebook.Tab', background=COLORS['bg_light'], foreground=COLORS['emphasis'])
+    style.map('TNotebook.Tab', background=[('selected', COLORS['accent'])],
+                               foreground=[('selected', 'white')])
+
+    # ラベルスタイル
+    style.configure('TLabel', foreground=COLORS['emphasis'])
+    style.configure('Error.TLabel', foreground=COLORS['warning'])
+    style.configure('Success.TLabel', foreground=COLORS['success'])
 
     # ==========================================================
     # プロジェクトディレクトリ選択部分の作成
     # ==========================================================
-    frame_dir = ttk.Frame(root)  # フレーム（コンテナ）の作成
+    frame_dir = ttk.Frame(root, style='Odd.TFrame')  # フレーム（コンテナ）の作成
     frame_dir.pack(fill='x', pady=5, padx=5)  # フレームの配置（x方向に伸縮可能）
     
     # ラベルとテキスト入力欄の配置
@@ -173,7 +245,7 @@ def main():
             project_dir_var.set(d)  # 選択されたパスを入力欄にセット
     
     # 「Browse...」ボタンの配置
-    ttk.Button(frame_dir, text="開く", command=browse_dir).pack(side='left')
+    ttk.Button(frame_dir, text="開く", command=browse_dir, style='Accent.TButton').pack(side='left')
 
     # ==========================================================
     # タブインターフェースの作成
@@ -182,7 +254,7 @@ def main():
     notebook.pack(fill='both', expand=True, pady=5, padx=5)
 
     # ファイルリスト用タブの作成
-    frame_files = ttk.Frame(notebook)
+    frame_files = ttk.Frame(notebook, style='Odd.TFrame')
     notebook.add(frame_files, text='Files')  # タブに「Files」ページを追加
 
     # ファイル追加ボタンの作成
@@ -202,7 +274,7 @@ def main():
                 except ValueError:
                     file_list.add_file(f)
 
-    add_button = ttk.Button(frame_files, text="ファイルを追加", command=add_files)
+    add_button = ttk.Button(frame_files, text="ファイルを追加", command=add_files, style='Accent.TButton')
     add_button.pack(anchor='w', padx=5, pady=5)
 
     # ドラッグ＆ドロップ領域の作成
@@ -211,30 +283,30 @@ def main():
     file_list.pack(fill='both', expand=True, padx=5)
 
     # エラーメッセージ用タブの作成
-    frame_error = ttk.Frame(notebook)
+    frame_error = ttk.Frame(notebook, style='Odd.TFrame')
     notebook.add(frame_error, text='エラーメッセージ')  # タブに「Error Message」ページを追加
 
     # エラーメッセージ入力領域の作成
     ttk.Label(frame_error, text="報告要望やエラーメッセージ").pack(anchor='w', padx=5)
-    error_text = tk.Text(frame_error, wrap=tk.WORD, height=20)  # テキスト入力欄
+    error_text = tk.Text(frame_error, wrap=tk.WORD, height=20, bg=COLORS['text_light'], fg='black')  # テキスト入力欄
     error_text.pack(fill='both', expand=True, padx=5)
 
     # エラーログ1用タブの作成
-    frame_error_log1 = ttk.Frame(notebook)
+    frame_error_log1 = ttk.Frame(notebook, style='Odd.TFrame')
     notebook.add(frame_error_log1, text='ログ 1')
 
     # エラーログ1入力領域の作成
     ttk.Label(frame_error_log1, text="エラーログをここに貼り付けてください").pack(anchor='w', padx=5)
-    error_log1_text = tk.Text(frame_error_log1, wrap=tk.WORD, height=20)
+    error_log1_text = tk.Text(frame_error_log1, wrap=tk.WORD, height=20, bg=COLORS['text_light'], fg='black')
     error_log1_text.pack(fill='both', expand=True, padx=5)
 
     # エラーログ2用タブの作成
-    frame_error_log2 = ttk.Frame(notebook)
+    frame_error_log2 = ttk.Frame(notebook, style='Odd.TFrame')
     notebook.add(frame_error_log2, text='ログ 2')
 
     # エラーログ2入力領域の作成
     ttk.Label(frame_error_log2, text="エラーログをここに貼り付けてください").pack(anchor='w', padx=5)
-    error_log2_text = tk.Text(frame_error_log2, wrap=tk.WORD, height=20)
+    error_log2_text = tk.Text(frame_error_log2, wrap=tk.WORD, height=20, bg=COLORS['text_light'], fg='black')
     error_log2_text.pack(fill='both', expand=True, padx=5)
 
     # ==========================================================
@@ -274,7 +346,7 @@ def main():
     # ==========================================================
     # ボタン類の作成と処理関数の定義
     # ==========================================================
-    frame_buttons = ttk.Frame(root)
+    frame_buttons = ttk.Frame(root, style='Odd.TFrame')
     frame_buttons.pack(fill='x', pady=5, padx=5)
 
     def do_merge():
@@ -327,8 +399,8 @@ def main():
         error_log2_text.delete('1.0', tk.END)  # エラーログ2をクリア
 
     # マージボタンとリセットボタンの配置
-    ttk.Button(frame_buttons, text="Merge", command=do_merge).pack(side='left', padx=5)
-    ttk.Button(frame_buttons, text="Reset", command=do_reset).pack(side='left', padx=5)
+    ttk.Button(frame_buttons, text="Merge", command=do_merge, style='Accent.TButton').pack(side='left', padx=5)
+    ttk.Button(frame_buttons, text="Reset", command=do_reset, style='Warning.TButton').pack(side='left', padx=5)
 
     # ==========================================================
     # ステータス表示部分の作成
