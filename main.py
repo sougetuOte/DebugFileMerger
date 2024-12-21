@@ -297,15 +297,10 @@ def main():
                 messagebox.showerror("Error", "ファイルやメッセージがありません")
                 return
 
-            # タイムスタンプ付きの出力ファイル名を生成
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            base_name, ext = os.path.splitext(default_output)
-            output_md = f"{base_name}_{timestamp}{ext}"
             # 相対パスを絶対パスに変換
             absolute_paths = [os.path.join(project_dir, path) for path in relative_paths]
             merge_files(
-                os.path.join(project_dir, output_md),
+                os.path.join(project_dir, default_output),
                 absolute_paths,
                 project_dir=project_dir,
                 max_depth=max_depth,
@@ -315,7 +310,7 @@ def main():
                 error_log1=error_log1,
                 error_log2=error_log2
             )
-            messagebox.showinfo("成功", f"Merged into {os.path.join(project_dir, output_md)}")
+            messagebox.showinfo("成功", f"Merged into {os.path.join(project_dir, default_output)}")
             logging.info("ファイルはプロジェクトディレクトリに保存されました")
 
         except Exception as e:

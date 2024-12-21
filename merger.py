@@ -1,7 +1,22 @@
 import os
 import logging
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def generate_output_filename(base_filename):
+    """
+    出力ファイル名にタイムスタンプを付与する
+    
+    Args:
+        base_filename: 基本となるファイル名（例：'merged_result.md'）
+    
+    Returns:
+        タイムスタンプ付きのファイル名（例：'merged_result_20240101123456.md'）
+    """
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    base_name, ext = os.path.splitext(base_filename)
+    return f"{base_name}_{timestamp}{ext}"
 
 def generate_file_tree(project_dir, max_depth=3, skip_dirs=None, skip_extensions=None, current_depth=1):
     """
@@ -61,6 +76,8 @@ def generate_file_tree(project_dir, max_depth=3, skip_dirs=None, skip_extensions
 
 def merge_files(output_file, file_paths, project_dir=None, max_depth=3, skip_dirs=None, skip_extensions=None,
                error_message=None, error_log1=None, error_log2=None):
+    # 出力ファイル名にタイムスタンプを付与
+    output_file = generate_output_filename(output_file)
     """
     指定されたファイルを結合し、一つのファイルに出力する。
     project_dirが指定された場合は、ファイルツリーも出力する。
@@ -131,8 +148,14 @@ def merge_files(output_file, file_paths, project_dir=None, max_depth=3, skip_dir
         outfile.write(f"\n\n# Summary\nMerged {file_count} files, total size: {total_size} bytes".encode('utf-8'))
     logging.info(f"Successfully merged {file_count} files into {output_file}, total size: {total_size} bytes")
 
+# デバッグ・テスト用の設定
+DEFAULT_TEST_OUTPUT = "merged_file.txt"
+
 if __name__ == "__main__":
-    output_filename = "merged_file.txt"
-    # テスト用のファイルリスト
+    """
+    このセクションは開発時のデバッグとテスト用です。
+    実際のアプリケーションではmain.pyがエントリーポイントとなり、
+    このモジュールはライブラリとして使用されます。
+    """
     test_files = ["main.py", "merger.py"]
-    merge_files(output_filename, test_files)
+    merge_files(DEFAULT_TEST_OUTPUT, test_files)
