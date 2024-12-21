@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess
 import sys
-import glob
 
 def find_tkdnd_path():
     """tkdndライブラリのパスを探す"""
