@@ -137,6 +137,10 @@ def main():
     # デフォルト値の設定（設定ファイルが無い場合や設定が見つからない場合に使用）
     default_output = config['DEFAULT'].get('output_filename', 'merged_result.md')
     max_depth = config['DEFAULT'].getint('max_depth', 3)
+    
+    # 除外設定の読み込み
+    skip_dirs = [d.strip() for d in config['DEFAULT'].get('skip_dirs', '').split(',') if d.strip()]
+    skip_extensions = [e.strip() for e in config['DEFAULT'].get('skip_extensions', '').split(',') if e.strip()]
 
     # ==========================================================
     # メインウィンドウの設定
@@ -293,16 +297,23 @@ def main():
                 messagebox.showerror("Error", "ファイルやメッセージがありません")
                 return
 
-            # マージ処理の実行
-            output_md = default_output
+            # タイムスタンプ付きの出力ファイル名を生成
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            base_name, ext = os.path.splitext(default_output)
+            output_md = f"{base_name}_{timestamp}{ext}"
+            # 相対パスを絶対パスに変換
+            absolute_paths = [os.path.join(project_dir, path) for path in relative_paths]
             merge_files(
-                project_dir,
-                relative_paths,
-                output_md,
+                os.path.join(project_dir, output_md),
+                absolute_paths,
+                project_dir=project_dir,
+                max_depth=max_depth,
+                skip_dirs=skip_dirs,
+                skip_extensions=skip_extensions,
                 error_message=error_message,
                 error_log1=error_log1,
-                error_log2=error_log2,
-                max_depth=max_depth
+                error_log2=error_log2
             )
             messagebox.showinfo("成功", f"Merged into {os.path.join(project_dir, output_md)}")
             logging.info("ファイルはプロジェクトディレクトリに保存されました")
