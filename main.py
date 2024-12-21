@@ -10,14 +10,9 @@ import traceback
 # 基本カラースキーム
 COLORS = {
     'main': '#E6F3FF',      # メインカラー（薄い青）
-    'accent': '#4B89DC',    # アクセントカラー（中間の青）
-    'emphasis': '#2C3E50',  # 強調カラー（濃い青）
-    'warning': '#E74C3C',   # 警告カラー（赤）
-    'success': '#27AE60',   # 成功カラー（緑）
-    'hover_accent': '#357ABD',  # ホバー時のアクセントカラー
-    'hover_warning': '#D62C1A',  # ホバー時の警告カラー
     'bg_light': '#F5F8FA',  # より薄い青（偶数行背景）
-    'text_light': '#F8F9FA' # テキストエリア背景
+    'emphasis': '#2C3E50',  # 強調カラー（濃い青）
+    'text_light': '#D0D8E0' # テキストエリア背景（より暗い色に調整）
 }
 
 def setup_tkdnd():
@@ -60,7 +55,7 @@ class FileListItem(ttk.Frame):
         self.label = ttk.Label(self, text=filepath)
         self.label.pack(side='left', padx=(0, 5), fill='x', expand=True)
         # 削除ボタン
-        self.delete_btn = ttk.Button(self, text="×", width=3, command=lambda: on_delete(self), style='Warning.TButton')
+        self.delete_btn = ttk.Button(self, text="×", width=3, command=lambda: on_delete(self))
         self.delete_btn.pack(side='right')
 
 class ScrollableFileList(ttk.Frame):
@@ -209,22 +204,10 @@ def main():
     style.configure('Odd.TFrame', background=COLORS['main'])
     style.configure('Even.TFrame', background=COLORS['bg_light'])
     
-    # ボタンスタイル
-    style.configure('Accent.TButton', background=COLORS['accent'], foreground='white')
-    style.configure('Warning.TButton', background=COLORS['warning'], foreground='white')
-    style.map('Accent.TButton', background=[('active', COLORS['hover_accent'])])
-    style.map('Warning.TButton', background=[('active', COLORS['hover_warning'])])
-    
-    # タブスタイル
-    style.configure('TNotebook', background=COLORS['main'])
-    style.configure('TNotebook.Tab', background=COLORS['bg_light'], foreground=COLORS['emphasis'])
-    style.map('TNotebook.Tab', background=[('selected', COLORS['accent'])],
-                               foreground=[('selected', 'white')])
-
     # ラベルスタイル
     style.configure('TLabel', foreground=COLORS['emphasis'])
-    style.configure('Error.TLabel', foreground=COLORS['warning'])
-    style.configure('Success.TLabel', foreground=COLORS['success'])
+    style.configure('Error.TLabel', foreground='#E74C3C')  # 赤色（エラー表示用）
+    style.configure('Success.TLabel', foreground='#27AE60')  # 緑色（成功表示用）
 
     # ==========================================================
     # プロジェクトディレクトリ選択部分の作成
@@ -245,7 +228,7 @@ def main():
             project_dir_var.set(d)  # 選択されたパスを入力欄にセット
     
     # 「Browse...」ボタンの配置
-    ttk.Button(frame_dir, text="開く", command=browse_dir, style='Accent.TButton').pack(side='left')
+    ttk.Button(frame_dir, text="開く", command=browse_dir).pack(side='left')
 
     # ==========================================================
     # タブインターフェースの作成
@@ -274,7 +257,7 @@ def main():
                 except ValueError:
                     file_list.add_file(f)
 
-    add_button = ttk.Button(frame_files, text="ファイルを追加", command=add_files, style='Accent.TButton')
+    add_button = ttk.Button(frame_files, text="ファイルを追加", command=add_files)
     add_button.pack(anchor='w', padx=5, pady=5)
 
     # ドラッグ＆ドロップ領域の作成
@@ -288,7 +271,8 @@ def main():
 
     # エラーメッセージ入力領域の作成
     ttk.Label(frame_error, text="報告要望やエラーメッセージ").pack(anchor='w', padx=5)
-    error_text = tk.Text(frame_error, wrap=tk.WORD, height=20, bg=COLORS['text_light'], fg='black')  # テキスト入力欄
+    error_text = tk.Text(frame_error, wrap=tk.WORD, height=20)  # テキスト入力欄
+    error_text.configure(background='white', foreground='black')
     error_text.pack(fill='both', expand=True, padx=5)
 
     # エラーログ1用タブの作成
@@ -297,7 +281,8 @@ def main():
 
     # エラーログ1入力領域の作成
     ttk.Label(frame_error_log1, text="エラーログをここに貼り付けてください").pack(anchor='w', padx=5)
-    error_log1_text = tk.Text(frame_error_log1, wrap=tk.WORD, height=20, bg=COLORS['text_light'], fg='black')
+    error_log1_text = tk.Text(frame_error_log1, wrap=tk.WORD, height=20)
+    error_log1_text.configure(background='white', foreground='black')
     error_log1_text.pack(fill='both', expand=True, padx=5)
 
     # エラーログ2用タブの作成
@@ -306,7 +291,8 @@ def main():
 
     # エラーログ2入力領域の作成
     ttk.Label(frame_error_log2, text="エラーログをここに貼り付けてください").pack(anchor='w', padx=5)
-    error_log2_text = tk.Text(frame_error_log2, wrap=tk.WORD, height=20, bg=COLORS['text_light'], fg='black')
+    error_log2_text = tk.Text(frame_error_log2, wrap=tk.WORD, height=20)
+    error_log2_text.configure(background='white', foreground='black')
     error_log2_text.pack(fill='both', expand=True, padx=5)
 
     # ==========================================================
@@ -399,8 +385,8 @@ def main():
         error_log2_text.delete('1.0', tk.END)  # エラーログ2をクリア
 
     # マージボタンとリセットボタンの配置
-    ttk.Button(frame_buttons, text="Merge", command=do_merge, style='Accent.TButton').pack(side='left', padx=5)
-    ttk.Button(frame_buttons, text="Reset", command=do_reset, style='Warning.TButton').pack(side='left', padx=5)
+    ttk.Button(frame_buttons, text="Merge", command=do_merge).pack(side='left', padx=5)
+    ttk.Button(frame_buttons, text="Reset", command=do_reset).pack(side='left', padx=5)
 
     # ==========================================================
     # ステータス表示部分の作成
